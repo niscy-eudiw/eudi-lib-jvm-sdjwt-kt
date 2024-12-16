@@ -39,7 +39,7 @@ interface SdJwtSerializationOps<JWT> {
     fun SdJwt<JWT>.serialize(): String
 
     /**
-     * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
+     * Serializes a [SdJwt] with a Key Binding JWT.
      *
      * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
      * in the generated Key Binding JWT
@@ -52,7 +52,7 @@ interface SdJwtSerializationOps<JWT> {
     }
 
     /**
-     * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
+     * Serializes a [SdJwt] with a Key Binding JWT.
      *
      * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
      * in the generated Key Binding JWT

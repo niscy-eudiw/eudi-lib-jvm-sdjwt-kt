@@ -100,4 +100,19 @@ inline fun <JWT, JWT1> SdJwt<JWT>.map(f: (JWT) -> JWT1): SdJwt<JWT1> {
     return SdJwt<JWT1>(f(jwt), disclosures)
 }
 
+data class SdJwtAndKbJwt<out JWT>(
+    val sdJwt: SdJwt<JWT>,
+    val kbJwt: JWT?
+)
+
+inline fun <JWT, JWT1> SdJwtAndKbJwt<JWT>.map(f: (JWT)->JWT1): SdJwtAndKbJwt<JWT1> {
+    contract {
+        callsInPlace(f, InvocationKind.UNKNOWN)
+    }
+    return SdJwtAndKbJwt(
+        sdJwt.map(f),
+        kbJwt?.let(f),
+    )
+}
+
 

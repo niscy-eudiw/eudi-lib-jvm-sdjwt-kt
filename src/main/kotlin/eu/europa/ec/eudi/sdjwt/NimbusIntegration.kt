@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFacotry
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -262,14 +262,14 @@ interface NimbusSdJwtOps :
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     /**
@@ -296,7 +296,7 @@ interface NimbusSdJwtOps :
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
     }
 
-    companion object : NimbusSdJwtOps, SdJwtVcVerifierFacotry<NimbusSignedJWT> by NimbusSdJwtVcFactory {
+    companion object : NimbusSdJwtOps, SdJwtVcVerifierFactory<NimbusSignedJWT> by NimbusSdJwtVcFactory {
 
         private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
             SdJwtSerializationOps(

@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefaultSdJwtVcFactory
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFacotry
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -75,20 +75,20 @@ interface DefaultSdJwtOps :
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt<JwtAndClaims>, JwtAndClaims?>> =
+    ): Result<SdJwtAndKbJwt<JwtAndClaims>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt<JwtAndClaims>, JwtAndClaims?>> =
+    ): Result<SdJwtAndKbJwt<JwtAndClaims>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     companion object :
         DefaultSdJwtOps,
         UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom,
-        SdJwtVcVerifierFacotry<JwtAndClaims> by DefaultSdJwtVcFactory {
+        SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory {
 
         val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
             JwtSignatureVerifier.noSignatureValidation { unverifiedJwt ->

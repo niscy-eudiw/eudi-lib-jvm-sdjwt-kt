@@ -72,7 +72,7 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
+     * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
     suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<JWT>>
 
@@ -87,7 +87,7 @@ interface SdJwtVcVerifier<out JWT> {
      * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
      * @return the verified SD-JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
+     * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
     suspend fun verifyIssuance(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>>
 
@@ -98,14 +98,14 @@ interface SdJwtVcVerifier<out JWT> {
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
      * @return the verified SD-JWT and KB-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
+     * The verified SD-JWT will the [JWT][SdJwt.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject? = null,
-    ): Result<Pair<SdJwt<JWT>, JWT?>>
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT in Combined Presentation Format
@@ -114,16 +114,16 @@ interface SdJwtVcVerifier<out JWT> {
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
      * @return the verified SD-JWT and KB-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
+     * The verified SD-JWT will the [JWT][SdJwt.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verifyPresentation(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject? = null,
-    ): Result<Pair<SdJwt<JWT>, JWT?>>
+    ): Result<SdJwtAndKbJwt<JWT>>
 
-    companion object : SdJwtVcVerifierFacotry<JwtAndClaims> by DefaultSdJwtVcFactory
+    companion object : SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
@@ -137,22 +137,21 @@ fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1
         override suspend fun verifyPresentation(
             unverifiedSdJwt: String,
             challenge: JsonObject?,
-        ): Result<Pair<SdJwt<JWT1>, JWT1?>> =
-            this@map.verifyPresentation(unverifiedSdJwt, challenge).map { (sdJwt, kbJwt) ->
-                sdJwt.map(f) to kbJwt?.let(f)
-            }
+        ): Result<SdJwtAndKbJwt<JWT1>> =
+            this@map.verifyPresentation(unverifiedSdJwt, challenge)
+                .map { sdJwtAndKbJwt-> sdJwtAndKbJwt.map(f) }
 
         override suspend fun verifyPresentation(
             unverifiedSdJwt: JsonObject,
             challenge: JsonObject?,
-        ): Result<Pair<SdJwt<JWT1>, JWT1?>> =
-            this@map.verifyPresentation(unverifiedSdJwt, challenge).map { (sdJwt, kbJwt) ->
-                sdJwt.map(f) to kbJwt?.let(f)
-            }
+        ): Result<SdJwtAndKbJwt<JWT1>> =
+            this@map.verifyPresentation(unverifiedSdJwt, challenge)
+                .map { sdJwtAndKbJwt-> sdJwtAndKbJwt.map(f) }
+
     }
 }
 
-interface SdJwtVcVerifierFacotry<out JWT> {
+interface SdJwtVcVerifierFactory<out JWT> {
 
     /**
      * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
@@ -178,7 +177,7 @@ interface SdJwtVcVerifierFacotry<out JWT> {
     ): SdJwtVcVerifier<JWT>
 }
 
-internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFacotry<JwtAndClaims> {
+internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFactory<JwtAndClaims> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JwtAndClaims> =
         NimbusSdJwtVcFactory.usingIssuerMetadata(httpClientFactory).map(::nimbusToJwtAndClaims)
 
@@ -195,7 +194,7 @@ internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFacotry<JwtAndClaims> {
         NimbusSdJwtVcFactory.usingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory).map(::nimbusToJwtAndClaims)
 }
 
-internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFacotry<NimbusSignedJWT> {
+internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory)
 
@@ -231,27 +230,29 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verifyIssuance(
         unverifiedSdJwt: String,
     ): Result<SdJwt<NimbusSignedJWT>> =
-        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt<NimbusSignedJWT>> =
-        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
-    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
+        val keyBindingVerifier =
+            keyBindingVerifierForSdJwtVc(challenge)
+        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject?,
-    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
+        val keyBindingVerifier =
+            keyBindingVerifierForSdJwtVc(challenge)
+        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 }
 
