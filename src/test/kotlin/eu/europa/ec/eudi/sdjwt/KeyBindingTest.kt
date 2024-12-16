@@ -275,7 +275,7 @@ class HolderActor(
     /**
      * Keeps the issued credential
      */
-    private var credentialSdJwt: SdJwt.Issuance<JwtAndClaims>? = null
+    private var credentialSdJwt: SdJwt<JwtAndClaims>? = null
 
     suspend fun storeCredential(sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
@@ -299,7 +299,7 @@ class HolderActor(
                 val issuanceSdJwt = checkNotNull(credentialSdJwt)
                 val whatToDisclose = verifierQuery.whatToDisclose
                 issuanceSdJwt.present(whatToDisclose)?.let { tmp ->
-                    SdJwt.Presentation(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
+                    SdJwt(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
                 }
             }
         checkNotNull(presentationSdJwt)
@@ -327,7 +327,7 @@ class VerifierActor(
 ) : DefaultSdJwtOps {
     private val verifier = DefaultSdJwtOps.usingDID(lookup)
     private var lastChallenge: JsonObject? = null
-    private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
+    private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
         VerifierChallenge(Random.nextBytes(10).toString(), clientId, Instant.now()),
         whatToDisclose,
@@ -340,7 +340,7 @@ class VerifierActor(
         verifierDebug("Presentation accepted with SD Claims:")
     }
 
-    private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
+    private fun SdJwt<JwtAndClaims>.ensureContainsWhatRequested() = apply {
         val disclosedPaths = recreateClaimsAndDisclosuresPerClaim().second.keys
         whatToDisclose.forEach { requested ->
             assertTrue("Requested $requested was not disclosed") {
