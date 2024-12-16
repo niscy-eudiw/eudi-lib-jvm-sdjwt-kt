@@ -48,7 +48,6 @@ val json = Json {
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
-
     println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
         val kind = when (d) {

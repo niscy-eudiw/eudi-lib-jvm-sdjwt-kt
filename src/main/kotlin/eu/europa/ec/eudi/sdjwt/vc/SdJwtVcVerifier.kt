@@ -139,15 +139,14 @@ fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1
             challenge: JsonObject?,
         ): Result<SdJwtAndKbJwt<JWT1>> =
             this@map.verifyPresentation(unverifiedSdJwt, challenge)
-                .map { sdJwtAndKbJwt-> sdJwtAndKbJwt.map(f) }
+                .map { sdJwtAndKbJwt -> sdJwtAndKbJwt.map(f) }
 
         override suspend fun verifyPresentation(
             unverifiedSdJwt: JsonObject,
             challenge: JsonObject?,
         ): Result<SdJwtAndKbJwt<JWT1>> =
             this@map.verifyPresentation(unverifiedSdJwt, challenge)
-                .map { sdJwtAndKbJwt-> sdJwtAndKbJwt.map(f) }
-
+                .map { sdJwtAndKbJwt -> sdJwtAndKbJwt.map(f) }
     }
 }
 
