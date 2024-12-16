@@ -19,7 +19,6 @@ import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.jwk.AsymmetricJWK as NimbusAsymmetricJWK
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
-
 /**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
  *
