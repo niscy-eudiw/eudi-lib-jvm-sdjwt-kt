@@ -229,12 +229,12 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verifyIssuance(
         unverifiedSdJwt: String,
     ): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: String,
@@ -242,7 +242,7 @@ private class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
         val keyBindingVerifier =
             keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 
     override suspend fun verifyPresentation(
@@ -251,7 +251,7 @@ private class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
         val keyBindingVerifier =
             keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 }
 

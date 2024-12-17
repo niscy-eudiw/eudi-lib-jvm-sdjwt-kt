@@ -16,8 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonObject
-import com.nimbusds.jose.jwk.AsymmetricJWK as NimbusAsymmetricJWK
-import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 /**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
@@ -71,22 +69,3 @@ fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> JsonObject): JsonObject =
 )
 fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> JsonObject): JsonObject =
     with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor) }
-
-/**
- * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
- * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
- * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
- * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
- * If provided, Key Binding JWT payload should contain the challenge as is.
- *
- * @see keyBindingJWTProcess
- */
-@Deprecated(
-    message = "Replace with NimbusSdJwtOps instead",
-    replaceWith = ReplaceWith("with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }"),
-)
-fun KeyBindingVerifier.Companion.mustBePresentAndValid(
-    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
-    challenge: JsonObject? = null,
-): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
-    with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }

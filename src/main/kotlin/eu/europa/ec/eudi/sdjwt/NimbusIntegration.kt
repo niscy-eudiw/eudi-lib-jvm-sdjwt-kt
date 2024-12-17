@@ -67,6 +67,25 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 //
 
 /**
+ * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
+ * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
+ * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+ * If provided, Key Binding JWT payload should contain the challenge as is.
+ *
+ * @see keyBindingJWTProcess
+ */
+@Deprecated(
+    message = "Replace with NimbusSdJwtOps instead",
+    replaceWith = ReplaceWith("with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }"),
+)
+fun KeyBindingVerifier.Companion.mustBePresentAndValid(
+    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
+    challenge: JsonObject? = null,
+): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
+    with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }
+
+/**
  * Creates a [NimbusJWTProcessor] suitable for verifying the Key Binding JWT
  * Enforces the following rules:
  * - The header contains typ claim equal to `kb+jwt`
@@ -80,7 +99,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * If provided, Key Binding JWT payload should contain the challenge as is.
  * @return
  */
-internal fun <PubKey> keyBindingJWTProcess(
+private fun <PubKey> keyBindingJWTProcess(
     holderPubKey: PubKey,
     challenge: NimbusJWTClaimsSet? = null,
 ): NimbusJWTProcessor<NimbusSecurityContext> where PubKey : NimbusJWK, PubKey : NimbusAsymmetricJWK =
@@ -88,7 +107,7 @@ internal fun <PubKey> keyBindingJWTProcess(
         typeVerifier = NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
         claimSetVerifier = NimbusDefaultJWTClaimsVerifier(
             challenge ?: NimbusJWTClaimsSet.Builder().build(),
-            setOf("aud", "iat", "nonce"),
+            setOf(RFC7519.AUDIENCE, RFC7519.ISSUED_AT, "nonce"),
         ),
         jwkSource = NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
     )

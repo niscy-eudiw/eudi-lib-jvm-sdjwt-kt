@@ -91,7 +91,7 @@ interface DefaultSdJwtOps :
         SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory {
 
         val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
-            JwtSignatureVerifier.noSignatureValidation { unverifiedJwt ->
+            JwtSignatureVerifier { unverifiedJwt ->
                 val (_, claims, _) = jwtClaims(unverifiedJwt).getOrThrow()
                 unverifiedJwt to claims
             }
