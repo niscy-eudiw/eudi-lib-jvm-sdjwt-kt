@@ -15,10 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import java.security.SecureRandom
-
-internal object JvmAndAndroidSecureRandom : Random {
-    override fun nextBytesCopyTo(bytes: ByteArray) {
-        SecureRandom().nextBytes(bytes)
-    }
+internal interface Platform {
+    val hashes: Hashes
+    val random: Random
 }
+
+internal expect fun platform(): Platform

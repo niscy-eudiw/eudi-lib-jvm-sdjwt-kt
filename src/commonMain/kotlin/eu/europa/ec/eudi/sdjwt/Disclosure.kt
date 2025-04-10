@@ -111,7 +111,7 @@ sealed interface Disclosure {
             claim: Claim,
         ): Result<ObjectProperty> {
             fun Claim.ensureValidAttributeName() {
-                val reserved = setOf(SdJwtSpec.CLAIM_SD_ALG, SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST)
+                val reserved = setOf<String>(SdJwtSpec.CLAIM_SD_ALG, SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST)
                 require(name() !in reserved) {
                     "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or")}"
                 }
@@ -124,7 +124,7 @@ sealed interface Disclosure {
                 // Create a Json Array [salt, claimName, claimValue]
                 val jsonArray = buildJsonArray {
                     add(JsonPrimitive(saltProvider.salt())) // salt
-                    add(claim.name()) // claim name
+                    add(JsonPrimitive(claim.name())) // claim name
                     add(claim.value()) // claim value
                 }
                 val jsonArrayStr = jsonArray.toString()

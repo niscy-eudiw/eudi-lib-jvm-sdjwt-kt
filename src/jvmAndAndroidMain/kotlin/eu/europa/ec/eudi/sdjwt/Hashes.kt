@@ -15,31 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-internal interface Hashes {
-    fun sha256(input: ByteArray): ByteArray
-    fun sha384(input: ByteArray): ByteArray
-    fun sha512(input: ByteArray): ByteArray
-
-    @Suppress("ktlint:standard:function-naming")
-    fun sha3_256(input: ByteArray): ByteArray
-
-    @Suppress("ktlint:standard:function-naming")
-    fun sha3_384(input: ByteArray): ByteArray
-
-    @Suppress("ktlint:standard:function-naming")
-    fun sha3_512(input: ByteArray): ByteArray
-}
-
-internal fun Hashes.digest(hashAlgorithm: HashAlgorithm, input: ByteArray): ByteArray =
-    when (hashAlgorithm) {
-        HashAlgorithm.SHA_256 -> sha256(input)
-        HashAlgorithm.SHA_384 -> sha384(input)
-        HashAlgorithm.SHA_512 -> sha512(input)
-        HashAlgorithm.SHA3_256 -> sha3_256(input)
-        HashAlgorithm.SHA3_384 -> sha3_384(input)
-        HashAlgorithm.SHA3_512 -> sha3_512(input)
-    }
-
 internal object JvmAndAndroidHashes : Hashes {
 
     override fun sha256(input: ByteArray): ByteArray =

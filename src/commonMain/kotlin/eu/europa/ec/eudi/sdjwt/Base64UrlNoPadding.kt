@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlin.io.encoding.Base64
 
-object Base64UrlNoPadding {
+internal object Base64UrlNoPadding {
 
     private fun base64UrlNoPadding() = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 

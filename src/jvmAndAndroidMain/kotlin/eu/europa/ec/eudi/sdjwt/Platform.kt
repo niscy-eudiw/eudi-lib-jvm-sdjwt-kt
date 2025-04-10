@@ -15,12 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-internal interface Platform {
-    val hashes: Hashes
-    val random: Random
-}
-
-internal fun platform(): Platform = JvmAndAndroidPlatform
+internal actual fun platform(): Platform = JvmAndAndroidPlatform
 
 internal object JvmAndAndroidPlatform : Platform {
 
