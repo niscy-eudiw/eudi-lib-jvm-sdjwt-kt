@@ -214,9 +214,9 @@ internal object StandardSerialization {
     /**
      * Parses an SD-JWT
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @return the JWT and the list of disclosures. Raises a [ParsingError] or [UnexpectedKeyBindingJwt]
-     * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed. It can raise also
-     *  [UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
+     * @return the JWT and the list of disclosures. Raises a [eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError] or [eu.europa.ec.eudi.sdjwt.KeyBindingError.UnexpectedKeyBindingJwt]
+     * @throws eu.europa.ec.eudi.sdjwt.SdJwtVerificationException with a [eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError] in case the given string cannot be parsed. It can raise also
+     *  [eu.europa.ec.eudi.sdjwt.KeyBindingError.UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
      */
     fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
         val (jwt, ds, kbJwt) = parse(unverifiedSdJwt)
@@ -227,8 +227,8 @@ internal object StandardSerialization {
     /**
      * Parses an SD-JWT
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @return the JWT and the list of disclosures and the Key Binding JWT (as string), or raises [ParsingError]
-     * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
+     * @return the JWT and the list of disclosures and the Key Binding JWT (as string), or raises [eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError]
+     * @throws eu.europa.ec.eudi.sdjwt.SdJwtVerificationException with a [eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError] in case the given string cannot be parsed
      */
     fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
         val parts = unverifiedSdJwt.split(SdJwtSpec.DISCLOSURE_SEPARATOR)

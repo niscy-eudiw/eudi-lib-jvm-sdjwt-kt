@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
 import kotlinx.serialization.json.*
+import kotlin.collections.iterator
+import kotlin.invoke
 
 /**
  * Errors that may occur during SD-JWT verification

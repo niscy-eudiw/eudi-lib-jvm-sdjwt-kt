@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 
 class SpecExamples {
