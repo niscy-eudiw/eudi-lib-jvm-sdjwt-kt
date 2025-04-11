@@ -23,10 +23,10 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.net.URI
 import kotlin.test.Test
@@ -34,7 +34,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 private data class IssuerConfig(
-    val issuer: URI,
+    val issuer: Url,
     val hashAlgorithm: HashAlgorithm,
     val issuerKey: ECKey,
     val signAlg: JWSAlgorithm,
@@ -61,7 +61,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             //
             // Never Selectively Disclosable claims
             //
-            claim("iss", config.issuer.toASCIIString())
+            claim("iss", config.issuer.toString())
             claim(SdJwtVcSpec.VCT, config.vct.toASCIIString())
             claim("iat", iat.epochSeconds)
             exp?.let { claim("exp", it.epochSeconds) }
@@ -126,7 +126,7 @@ private val JohnDoe = IdentityCredential(
 )
 
 private val IssuerSampleCfg = IssuerConfig(
-    issuer = URI.create("https://example.com/issuer"),
+    issuer = Url("https://example.com/issuer"),
     issuerKey = ECKey.parse(
         """
         {
@@ -152,7 +152,7 @@ class SdJwtVcIssuanceTest {
     val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata {
         val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
         val issuerMetadata = SdJwtVcIssuerMetadata(
-            issuer = issuingService.config.issuer,
+            issuer = issuingService.config.issuer.toString(),
             jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
         )
         HttpMock.clientReturning(issuerMetadata)
@@ -281,7 +281,7 @@ class SdJwtVcIssuanceTest {
         // Check claims
         val claims = verified.jwt.second
         assertEquals(issuingService.config.vct.toASCIIString(), claims[SdJwtVcSpec.VCT]?.jsonPrimitive?.contentOrNull)
-        assertEquals(issuingService.config.issuer.toASCIIString(), claims[RFC7519.ISSUER]?.jsonPrimitive?.contentOrNull)
+        assertEquals(issuingService.config.issuer.toString(), claims[RFC7519.ISSUER]?.jsonPrimitive?.contentOrNull)
         assertNotNull(claims[RFC7519.ISSUED_AT]?.jsonPrimitive)
         assertNotNull(claims["cnf"]?.jsonObject)
     }

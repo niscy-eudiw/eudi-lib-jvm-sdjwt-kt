@@ -35,7 +35,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import java.net.URI
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,7 +49,7 @@ private object SampleIssuer {
         .algorithm(alg)
         .generate()
     val issuerMeta = SdJwtVcIssuerMetadata(
-        issuer = URI.create("https://example.com"),
+        issuer = "https://example.com",
         jwks = Json.parseToJsonElement(JWKSet(key.toPublicJWK()).toString()).jsonObject,
     )
 
@@ -66,7 +65,7 @@ private object SampleIssuer {
     suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
-            claim(RFC7519.ISSUER, issuerMeta.issuer.toASCIIString())
+            claim(RFC7519.ISSUER, issuerMeta.issuer)
             claim(RFC7519.ISSUED_AT, Clock.System.now().epochSeconds)
             claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             sdClaim("foo", "bar")
@@ -136,14 +135,16 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
-        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier =
+            DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
-        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier =
+            DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
@@ -151,13 +152,17 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
-        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier =
+            DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
             val invalidJwt = assertIs<VerificationError.InvalidJwt>(exception.reason)
             val badJoseException = assertIs<BadJOSEException>(invalidJwt.cause)
-            assertEquals("Signed JWT rejected: Another algorithm expected, or no matching key(s) found", badJoseException.message)
+            assertEquals(
+                "Signed JWT rejected: Another algorithm expected, or no matching key(s) found",
+                badJoseException.message
+            )
         }
     }
 
