@@ -200,7 +200,7 @@ sealed interface SdJwtVcVerificationError {
         data class UntrustedIssuerCertificate(val reason: String? = null) : IssuerKeyVerificationError
 
         /**
-         * DID resolution failed.
+         * DID resolution fail.
          */
         data class DIDLookupFailure(val message: String, val cause: Throwable? = null) : IssuerKeyVerificationError
 
