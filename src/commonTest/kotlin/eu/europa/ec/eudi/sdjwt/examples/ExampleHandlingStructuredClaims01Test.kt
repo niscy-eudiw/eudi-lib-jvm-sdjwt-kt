@@ -18,10 +18,10 @@ package eu.europa.ec.eudi.sdjwt.examples
 import eu.europa.ec.eudi.sdjwt.*
 import kotlin.test.*
 
-class ExampleFlatSdJwt01Test {
+class ExampleHandlingStructuredClaims01Test {
 
     @Test
-    fun testExampleFlatSdJwt01() {
-        flatSdJwt.assertThat("Example 1: Flat SD-JWT", 1)
+    fun testExampleHandlingStructuredClaims01() {
+        handlingStructuredClaims.commonAssertThat("Appendix 1 - Example 2: Handling Structured Claims", 10)
     }
 }

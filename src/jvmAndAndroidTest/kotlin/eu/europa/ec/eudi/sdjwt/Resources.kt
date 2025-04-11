@@ -60,9 +60,15 @@ internal fun loadResource(name: String): String {
     }
 
     // If all else fails, try to load from the file system
-    val resourceFile = File("src/jvmAndAndroidTest/resources$name")
-    if (resourceFile.exists()) {
-        return resourceFile.readText()
+    val jvmResourceFile = File("src/jvmAndAndroidTest/resources$name")
+    if (jvmResourceFile.exists()) {
+        return jvmResourceFile.readText()
+    }
+
+    // Try in commonTest resources
+    val commonResourceFile = File("src/commonTest/resources$name")
+    if (commonResourceFile.exists()) {
+        return commonResourceFile.readText()
     }
 
     // If we get here, we couldn't load the resource

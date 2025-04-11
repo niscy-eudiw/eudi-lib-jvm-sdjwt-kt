@@ -22,6 +22,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RecreateClaimsTest {
+    private val jsonFormatter = Json {
+        prettyPrint = true
+        ignoreUnknownKeys = true
+    }
 
     @Test
     fun `recreating plain claims should return the plain claims`() {
@@ -42,7 +46,7 @@ class RecreateClaimsTest {
         val sdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
         return with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
             sdJwt.recreateClaims(visitor = null).also {
-                println(json.encodeToString(it))
+                println(jsonFormatter.encodeToString(it))
             }
         }
     }
