@@ -22,7 +22,6 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.*
 

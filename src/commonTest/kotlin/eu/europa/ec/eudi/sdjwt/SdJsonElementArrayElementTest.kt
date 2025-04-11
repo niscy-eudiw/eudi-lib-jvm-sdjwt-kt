@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test

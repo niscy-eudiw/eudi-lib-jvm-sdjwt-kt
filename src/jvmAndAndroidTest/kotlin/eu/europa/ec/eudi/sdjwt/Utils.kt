@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
-import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import io.ktor.client.*
@@ -25,7 +24,6 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

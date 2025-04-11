@@ -17,7 +17,5 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.DefaultSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 val DefaultSdJwtOps.SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims> get() = DefaultSdJwtVcFactory

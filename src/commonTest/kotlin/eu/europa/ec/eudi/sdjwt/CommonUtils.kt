@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
