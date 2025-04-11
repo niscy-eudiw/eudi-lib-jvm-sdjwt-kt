@@ -15,6 +15,19 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import java.security.SecureRandom
+
+internal actual fun platform(): Platform = JvmAndAndroidPlatform
+
+internal object JvmAndAndroidPlatform : Platform {
+
+    override val hashes: Hashes
+        get() = JvmAndAndroidHashes
+
+    override val random: Random
+        get() = JvmAndAndroidSecureRandom
+}
+
 internal object JvmAndAndroidHashes : Hashes {
 
     override fun sha256(input: ByteArray): ByteArray =
@@ -34,4 +47,10 @@ internal object JvmAndAndroidHashes : Hashes {
 
     override fun sha3_512(input: ByteArray): ByteArray =
         java.security.MessageDigest.getInstance("SHA3-512").digest(input)
+}
+
+internal object JvmAndAndroidSecureRandom : Random {
+    override fun nextBytesCopyTo(bytes: ByteArray) {
+        SecureRandom().nextBytes(bytes)
+    }
 }
