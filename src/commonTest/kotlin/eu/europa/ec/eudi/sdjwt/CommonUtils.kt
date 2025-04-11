@@ -19,6 +19,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /**
+ * Removes all newline characters from a string
+ */
+fun String.removeNewLine(): String = replace("\n", "")
+
+/**
  * A simplified version of assertThat that doesn't rely on JVM-specific dependencies.
  * It only checks the number of disclosures without printing the details.
  */
