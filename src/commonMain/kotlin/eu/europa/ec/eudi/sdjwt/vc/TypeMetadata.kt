@@ -393,5 +393,3 @@ value class CssColor(val value: String) {
 
     override fun toString() = value
 }
-
-
