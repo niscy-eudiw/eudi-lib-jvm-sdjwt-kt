@@ -21,88 +21,19 @@ import com.nimbusds.jose.proc.SecurityContext as NimbusSecurityContext
 import com.nimbusds.jose.util.X509CertUtils as NimbusX509CertUtils
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
-/**
- * A function to look up public keys from DIDs/DID URLs.
- */
-fun interface LookupPublicKeysFromDIDDocument {
 
-    /**
-     * Lookup the public keys from a DID document.
-     *
-     * @param did the identifier of the DID document
-     * @param didUrl optional DID URL, that is either absolute or relative to [did], indicating the exact public key
-     * to lookup from the DID document
-     *
-     * @return the matching public keys or null in case lookup fails for any reason
-     */
-    suspend fun lookup(did: String, didUrl: String?): List<NimbusJWK>?
-}
-
-
-fun interface X509CertificateTrust {
-    suspend fun isTrusted(chain: List<X509Certificate>): Boolean
-
-    companion object {
-        val None: X509CertificateTrust = X509CertificateTrust { false }
-    }
-}
-
-interface SdJwtVcVerifierFactory<out JWT> {
-
-    /**
-     * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
-     */
-    fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JWT>
-
-    /**
-     * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled.
-     */
-    fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier<JWT>
-
-    /**
-     * Creates a new [SdJwtVcVerifier] with DID resolution enabled.
-     */
-    fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier<JWT>
-
-    /**
-     * Creates a new [SdJwtVcVerifier] with X509 Certificate trust, and SD-JWT-VC Issuer Metadata resolution enabled.
-     */
-    fun usingX5cOrIssuerMetadata(
-        x509CertificateTrust: X509CertificateTrust,
-        httpClientFactory: KtorHttpClientFactory,
-    ): SdJwtVcVerifier<JWT>
-}
-
-internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFactory<JwtAndClaims> {
-    override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JwtAndClaims> =
-        NimbusSdJwtVcFactory.usingIssuerMetadata(httpClientFactory).map(::nimbusToJwtAndClaims)
-
-    override fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier<JwtAndClaims> =
-        NimbusSdJwtVcFactory.usingX5c(x509CertificateTrust).map(::nimbusToJwtAndClaims)
-
-    override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier<JwtAndClaims> =
-        NimbusSdJwtVcFactory.usingDID(didLookup).map(::nimbusToJwtAndClaims)
-
-    override fun usingX5cOrIssuerMetadata(
-        x509CertificateTrust: X509CertificateTrust,
-        httpClientFactory: KtorHttpClientFactory,
-    ): SdJwtVcVerifier<JwtAndClaims> =
-        NimbusSdJwtVcFactory.usingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory)
-            .map(::nimbusToJwtAndClaims)
-}
-
-internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
+internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory)
 
-    override fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier<NimbusSignedJWT> =
+    override fun usingX5c(x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(trust = x509CertificateTrust)
 
-    override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier<NimbusSignedJWT> =
+    override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<NimbusJWK>): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(lookup = didLookup)
 
     override fun usingX5cOrIssuerMetadata(
-        x509CertificateTrust: X509CertificateTrust,
+        x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>,
         httpClientFactory: KtorHttpClientFactory,
     ): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
@@ -110,8 +41,8 @@ internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
 
 private class NimbusSdJwtVcVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
-    trust: X509CertificateTrust? = null,
-    lookup: LookupPublicKeysFromDIDDocument? = null,
+    trust: X509CertificateTrust<List<X509Certificate>>? = null,
+    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     init {
         require(httpClientFactory != null || trust != null || lookup != null) {
@@ -150,9 +81,6 @@ private class NimbusSdJwtVcVerifier(
     }
 }
 
-
-
-
 /**
  * Factory method for producing a SD-JWT-VC specific signature verifier.
  * This verifier will get the Issuer's public key from the JWT part of the SD-JWT.
@@ -174,10 +102,10 @@ private class NimbusSdJwtVcVerifier(
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
-fun sdJwtVcSignatureVerifier(
+internal fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
-    trust: X509CertificateTrust? = null,
-    lookup: LookupPublicKeysFromDIDDocument? = null,
+    trust: X509CertificateTrust<List<X509Certificate>>? = null,
+    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
 ): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
     withContext(Dispatchers.IO) {
         val signedJwt = try {
@@ -190,7 +118,7 @@ fun sdJwtVcSignatureVerifier(
         yield()
 
         try {
-            val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
+            val jwtProcessor = NimbusSdJwtVcJwtProcessor(jwkSource)
             jwtProcessor.process(signedJwt, null)
             yield()
             signedJwt
@@ -205,8 +133,8 @@ private fun raise(error: SdJwtVcVerificationError): Nothing =
 
 private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory?,
-    trust: X509CertificateTrust?,
-    lookup: LookupPublicKeysFromDIDDocument?,
+    trust: X509CertificateTrust<List<X509Certificate>>?,
+    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>?,
     signedJwt: NimbusSignedJWT,
 ): NimbusJWKSource<NimbusSecurityContext> {
     suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
@@ -234,7 +162,7 @@ private suspend fun issuerJwkSource(
         }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
         if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
 
-        return SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, jwks)
+        return NimbusSdJwtVcJwtProcessor.didJwkSet(signedJwt.header, jwks)
     }
 
     return when (val source = keySource(signedJwt)) {

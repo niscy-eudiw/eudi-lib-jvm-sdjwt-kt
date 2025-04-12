@@ -36,7 +36,7 @@ import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier as NimbusDefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.JWTClaimsSetVerifier as NimbusJWTClaimsSetVerifier
 
-internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
+internal class NimbusSdJwtVcJwtProcessor<C : NimbusSecurityContext>(
     jwkSource: NimbusJWKSource<C>,
 ) : JwkSourceJWTProcessor<C>(typeVerifier(), claimSetVerifier(), jwkSource) {
 
