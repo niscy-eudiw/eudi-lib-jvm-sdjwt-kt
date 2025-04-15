@@ -1,13 +1,15 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
 
-internal interface MetadataOps : GetSdJwtVcIssuerMetadataOps, GetJwkSetKtorOps {
+interface GetSdJwtVcIssuerJwkSetKtorOps : GetSdJwtVcIssuerMetadataKtorOps {
 
-    suspend fun HttpClient.getJWKSetFromSdJwtVcIssuerMetadata(issuer: Url): JsonObject = coroutineScope {
+    suspend fun HttpClient.getSdJwtIssuerKeySet(issuer: Url): JsonObject = coroutineScope {
         val metadata = getSdJwtVcIssuerMetadata(issuer)
         checkNotNull(metadata) { "Failed to obtain issuer metadata for $issuer" }
         val jwkSet = jwkSetOf(metadata)
@@ -22,5 +24,12 @@ internal interface MetadataOps : GetSdJwtVcIssuerMetadataOps, GetJwkSetKtorOps {
         }
     }
 
-    companion object : MetadataOps
+    private suspend fun HttpClient.getJWKSet(jwksUri: Url): JsonObject? {
+        val httpResponse = get(jwksUri)
+        return if (httpResponse.status.isSuccess()) httpResponse.body()
+        else null
+    }
+
+    companion object : GetSdJwtVcIssuerJwkSetKtorOps
 }
+

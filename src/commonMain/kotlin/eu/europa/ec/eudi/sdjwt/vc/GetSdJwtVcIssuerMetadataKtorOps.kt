@@ -21,19 +21,18 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Gets the metadata of an SD-JWT VC issuer.
  */
-interface GetSdJwtVcIssuerMetadataOps {
+interface GetSdJwtVcIssuerMetadataKtorOps {
 
     suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? =
         alternatives.firstNotNullOfOrNull { formWellKnownUrl ->
             runCatching { getSdJwtVcIssuerMetadata(issuer, formWellKnownUrl) }.getOrNull()
         }
 
-    companion object : GetSdJwtVcIssuerMetadataOps {
+    companion object : GetSdJwtVcIssuerMetadataKtorOps {
         internal val BySpec get() = FormWellKnownURL.prepend(SdJwtVcSpec.WELL_KNOWN_JWT_VC_ISSUER)
         internal val Alt get() = FormWellKnownURL.appendAtTheEnd(SdJwtVcSpec.WELL_KNOWN_JWT_VC_ISSUER)
         private val alternatives get() = listOf(BySpec, Alt)
@@ -60,22 +59,6 @@ interface GetSdJwtVcIssuerMetadataOps {
                     else -> null
                 }
             }
-    }
-}
-
-/**
- * Gets the JWKSet given a location
- */
-interface GetJwkSetKtorOps {
-
-    suspend fun HttpClient.getJWKSet(jwksUri: Url): JsonObject? = getJWKSetAs(jwksUri)
-
-    companion object : GetJwkSetKtorOps {
-        suspend inline fun <reified JWK> HttpClient.getJWKSetAs(jwksUri: Url): JWK? = coroutineScope {
-            val httpResponse = get(jwksUri)
-            if (httpResponse.status.isSuccess()) httpResponse.body()
-            else null
-        }
     }
 }
 

@@ -141,7 +141,7 @@ private suspend fun issuerJwkSource(
         if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatching {
             val json = httpClientFactory().use { httpClient ->
-                with(MetadataOps) { httpClient.getJWKSetFromSdJwtVcIssuerMetadata(source.iss) }
+                with(GetSdJwtVcIssuerJwkSetKtorOps) { httpClient.getSdJwtIssuerKeySet(source.iss) }
             }
             NimbusJWKSet.parse(json.toString())
         }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }

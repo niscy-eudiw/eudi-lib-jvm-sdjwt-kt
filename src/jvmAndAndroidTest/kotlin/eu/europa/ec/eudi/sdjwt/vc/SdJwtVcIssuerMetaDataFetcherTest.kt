@@ -32,7 +32,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.test.*
 
 internal class SdJwtVcIssuerMetaDataFetcherTest :
-    MetadataOps {
+    GetSdJwtVcIssuerJwkSetKtorOps {
 
     @Test
     fun `verify issuer jwks resolution fails when issuer is mismatched`() = runTest {
@@ -56,7 +56,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
         }
 
         assertFailsWith(IllegalStateException::class, "issuer does not match the expected value") {
-            with(GetSdJwtVcIssuerMetadataOps) {
+            with(GetSdJwtVcIssuerMetadataKtorOps) {
                 client.getSdJwtVcIssuerMetadata(issuer, BySpec)
             }
         }
@@ -85,7 +85,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
             }
         }
         assertFailsWith(JsonConvertException::class, "either 'jwks' or 'jwks_uri' must be provided") {
-            with(GetSdJwtVcIssuerMetadataOps) {
+            with(GetSdJwtVcIssuerMetadataKtorOps) {
                 client.getSdJwtVcIssuerMetadata(issuer, BySpec)
             }
         }
@@ -111,7 +111,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
                 }
             }
 
-            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer).run {
+            val jwks = client.getSdJwtIssuerKeySet(issuer).run {
                 JWKSet.parse(toString())
             }
 
@@ -154,7 +154,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
                 }
             }
 
-            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer).run{
+            val jwks = client.getSdJwtIssuerKeySet(issuer).run{
                 JWKSet.parse(toString())
             }
             assertEquals(1, jwks.size())
