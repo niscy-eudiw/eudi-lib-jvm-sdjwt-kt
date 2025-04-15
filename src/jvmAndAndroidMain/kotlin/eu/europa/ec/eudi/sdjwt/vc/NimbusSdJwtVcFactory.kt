@@ -140,10 +140,12 @@ private suspend fun issuerJwkSource(
     suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
         if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatching {
-            httpClientFactory().use { httpClient ->
+            val json = httpClientFactory().use { httpClient ->
                 with(MetadataOps) { httpClient.getJWKSetFromSdJwtVcIssuerMetadata(source.iss) }
             }
+            NimbusJWKSet.parse(json.toString())
         }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
+
         return NimbusImmutableJWKSet(jwks)
     }
 
@@ -216,28 +218,4 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> raise(CannotDetermineIssuerVerificationMethod)
     }
-}
-
-internal interface MetadataOps : GetSdJwtVcIssuerMetadataOps, GetJwkSetKtorOps {
-
-    suspend fun HttpClient.getJWKSetFromSdJwtVcIssuerMetadata(issuer: Url): NimbusJWKSet = coroutineScope {
-        val metadata = getSdJwtVcIssuerMetadata(issuer)
-        checkNotNull(metadata) { "Failed to obtain issuer metadata for $issuer" }
-        val jwkSet = jwkSetOf(metadata)
-        checkNotNull(jwkSet) { "Failed to obtain JWKSet from metadata" }
-        val nJwkSet = jwkSet.asNimbusJWKSet().getOrNull()
-        checkNotNull(nJwkSet) { "Failed to parse JWKSet" }
-    }
-
-    private suspend fun HttpClient.jwkSetOf(metadata: SdJwtVcIssuerMetadata): JsonObject? = coroutineScope {
-        when {
-            metadata.jwksUri != null -> getJWKSet(Url(metadata.jwksUri))
-            else -> metadata.jwks
-        }
-    }
-
-    private fun JsonObject.asNimbusJWKSet(): Result<NimbusJWKSet> =
-        runCatching { NimbusJWKSet.parse(toString()) }
-
-    companion object : MetadataOps
 }

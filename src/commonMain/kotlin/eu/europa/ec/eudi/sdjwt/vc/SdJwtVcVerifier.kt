@@ -80,6 +80,8 @@ interface SdJwtVcVerifier<out JWT> {
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verify(unverifiedSdJwt: JsonObject, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>>
+
+
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
