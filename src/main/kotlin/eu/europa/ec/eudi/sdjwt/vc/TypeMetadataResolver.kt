@@ -15,6 +15,11 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.http.Url
+import io.ktor.http.isSuccess
+
 /**
  * Resolver for SD-JWT VC Type Metadata.
  */
@@ -72,4 +77,27 @@ class DefaultTypeMetadataResolver(
 
         return doResolve(vct, integrity, emptyMap())
     }
+}
+
+class DefaultHttpsTypeMetadataResolutionMechanism(
+    val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+) : TypeMetadataResolutionMechanism {
+    override suspend fun invoke(
+        vct: Vct,
+        integrity: DocumentIntegrity?,
+    ): Result<SdJwtVcTypeMetadata> =
+        runCatching {
+            val url = Url(vct.value) // This will throw if the URL is invalid
+            val metadata = httpClientFactory()
+                .use { httpClient ->
+                    val httpResponse = httpClient.get(url)
+                    when {
+                        httpResponse.status.isSuccess() -> {
+                            httpResponse.body<SdJwtVcTypeMetadata>()
+                        }
+                    }
+                }
+            // Check here the metadata integrity value
+            TODO()
+        }
 }
