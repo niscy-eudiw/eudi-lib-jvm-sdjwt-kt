@@ -19,6 +19,8 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.Url
 import io.ktor.http.isSuccess
+import kotlinx.io.IOException
+import java.security.MessageDigest
 
 /**
  * Resolver for SD-JWT VC Type Metadata.
@@ -88,16 +90,30 @@ class DefaultHttpsTypeMetadataResolutionMechanism(
     ): Result<SdJwtVcTypeMetadata> =
         runCatching {
             val url = Url(vct.value) // This will throw if the URL is invalid
-            val metadata = httpClientFactory()
-                .use { httpClient ->
-                    val httpResponse = httpClient.get(url)
-                    when {
-                        httpResponse.status.isSuccess() -> {
-                            httpResponse.body<SdJwtVcTypeMetadata>()
-                        }
-                    }
-                }
+            val metadata = metadataRetrieval(url)
             // Check here the metadata integrity value
+            if (integrity != null) {
+                require(integrityCheck(metadata, integrity))
+            }
             TODO()
         }
+
+    private suspend fun metadataRetrieval(url: Url): ByteArray? = httpClientFactory()
+        .use { httpClient ->
+            val httpResponse = httpClient.get(url)
+            when {
+                httpResponse.status.isSuccess() -> {
+                    httpResponse.body<ByteArray>()
+                }
+                else -> throw IOException(httpResponse.status.description) // placeholder
+            }
+        }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private suspend fun integrityCheck(byteArray: ByteArray?, integrity: DocumentIntegrity): Boolean {
+        val getHashedValue = integrity.value.split("-", limit = 2)
+        MessageDigest.getInstance(getHashedValue[0]).let { messageDigest ->
+            return messageDigest.digest(byteArray).toHexString() == getHashedValue[1]
+        }
+    }
 }
