@@ -21,7 +21,6 @@ import io.ktor.http.Url
 import io.ktor.http.isSuccess
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
-import java.security.MessageDigest
 
 /**
  * Resolver for SD-JWT VC Type Metadata.
@@ -83,41 +82,27 @@ class DefaultTypeMetadataResolver(
 }
 
 class DefaultHttpsTypeMetadataResolutionMechanism(
-    val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : TypeMetadataResolutionMechanism {
     override suspend fun invoke(
         vct: Vct,
         integrity: DocumentIntegrity?,
     ): Result<SdJwtVcTypeMetadata> =
         runCatching {
-            val url = Url(vct.value) // This will throw if the URL is invalid
-            val metadata = metadataRetrieval(url)
-            // Check here the metadata integrity value
-            if (integrity != null) {
-                require(integrityCheck(metadata, integrity))
-            }
-            Json.decodeFromString<SdJwtVcTypeMetadata>(metadata?.decodeToString() ?: throw IllegalArgumentException("Placeholder"))
+            val url = Url(vct.value)
+            val metadata = retrieveMetadata(url)
+
+            Json.decodeFromString<SdJwtVcTypeMetadata>(metadata.decodeToString())
         }
 
-    private suspend fun metadataRetrieval(url: Url): ByteArray? = httpClientFactory()
+    private suspend fun retrieveMetadata(url: Url): ByteArray = httpClientFactory()
         .use { httpClient ->
             val httpResponse = httpClient.get(url)
             when {
                 httpResponse.status.isSuccess() -> {
                     httpResponse.body<ByteArray>()
                 }
-                else -> throw IOException(httpResponse.status.description) // placeholder
+                else -> throw IOException(httpResponse.status.description)
             }
         }
-
-    @OptIn(ExperimentalStdlibApi::class)
-    private suspend fun integrityCheck(byteArray: ByteArray?, integrity: DocumentIntegrity): Boolean {
-        // Is the value base64?
-        // Do we need to convert it further after getting the digest?
-        // Lib is jvm specific
-        val getHashedValue = integrity.value.split("-", limit = 2)
-        MessageDigest.getInstance(getHashedValue[0]).let { messageDigest ->
-            return messageDigest.digest(byteArray).toHexString() == getHashedValue[1]
-        }
-    }
 }
