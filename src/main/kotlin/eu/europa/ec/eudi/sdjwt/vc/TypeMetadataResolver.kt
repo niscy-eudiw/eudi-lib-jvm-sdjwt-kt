@@ -20,6 +20,7 @@ import io.ktor.client.request.get
 import io.ktor.http.Url
 import io.ktor.http.isSuccess
 import kotlinx.io.IOException
+import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 
 /**
@@ -95,7 +96,7 @@ class DefaultHttpsTypeMetadataResolutionMechanism(
             if (integrity != null) {
                 require(integrityCheck(metadata, integrity))
             }
-            TODO()
+            Json.decodeFromString<SdJwtVcTypeMetadata>(metadata?.decodeToString() ?: throw IllegalArgumentException("Placeholder"))
         }
 
     private suspend fun metadataRetrieval(url: Url): ByteArray? = httpClientFactory()
@@ -111,6 +112,9 @@ class DefaultHttpsTypeMetadataResolutionMechanism(
 
     @OptIn(ExperimentalStdlibApi::class)
     private suspend fun integrityCheck(byteArray: ByteArray?, integrity: DocumentIntegrity): Boolean {
+        // Is the value base64?
+        // Do we need to convert it further after getting the digest?
+        // Lib is jvm specific
         val getHashedValue = integrity.value.split("-", limit = 2)
         MessageDigest.getInstance(getHashedValue[0]).let { messageDigest ->
             return messageDigest.digest(byteArray).toHexString() == getHashedValue[1]
