@@ -25,7 +25,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionCredentialValidationError
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionValidationResult
-import eu.europa.ec.eudi.sdjwt.vc.validateCredential
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcDefinitionValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -62,7 +62,7 @@ class SdJwtVcDefinitionValidatorTest {
         val sdJwt = sdJwt { claim("family_name", "Foo") }
         val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
         val expectedError =
-            SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(
+            SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedObjectAttribute(
                 PidDefinition,
                 "family_name",
 
@@ -151,8 +151,8 @@ class SdJwtVcDefinitionValidatorTest {
             sd to dv.value
         }
         val expectedErrors = listOf(
-            SdJwtDefinitionCredentialValidationError.WrongAttributeType(PidDefinition, "nationalities"),
-            SdJwtDefinitionCredentialValidationError.WrongAttributeType(PidDefinition, "place_of_birth"),
+            SdJwtDefinitionCredentialValidationError.WrongObjectAttributeType(PidDefinition, "nationalities"),
+            SdJwtDefinitionCredentialValidationError.WrongObjectAttributeType(PidDefinition, "place_of_birth"),
         )
         val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
         errors.forEach { expectedError -> println(expectedError) }
@@ -194,7 +194,7 @@ class SdJwtVcDefinitionValidatorTest {
         sdJwtObject: SdJwtObject,
     ): SdJwtDefinitionValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
-        return sdJwtDefinition.validateCredential(payload, disclosures)
+        return SdJwtVcDefinitionValidator.validate(payload, disclosures, sdJwtDefinition)
     }
 
     private fun createSdJwt(sdJwtObject: SdJwtObject): UnsignedSdJwt {
