@@ -27,88 +27,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
-sealed interface SdJwtDefinitionCredentialValidationError {
-
-    /**
-     * Represents inconsistencies found in the provided disclosures that prevent
-     * the successful reconstruction of claims. This includes issues like
-     * non-unique disclosures, disclosures without matching digests, etc.
-     *
-     * @param cause The underlying exception that occurred during claim reconstruction.
-     */
-    data class DisclosureInconsistencies(val cause: Throwable) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which is not included in the [containerDefinition].
-     *
-     * @param containerDefinition the definition of the object where the unknown attribute was found
-     * @param attributeName The name of the unknown attribute
-     */
-    data class UnknownObjectAttribute(
-        val containerDefinition: DisclosableObject<String, AttributeMetadata>,
-        val attributeName: String,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    data class WrongObjectAttributeType(
-        val containerDefinition: DisclosableObject<String, AttributeMetadata>,
-        val attributeName: String,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    data class WrongArrayElementType(
-        val containerDefinition: DisclosableArray<String, AttributeMetadata>,
-        val index: Int,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which according to the [containerDefinition] is not
-     * correctly disclosed.
-     *
-     * For instance, an attribute is expected to be always selectively disclosable,
-     * yet it was found to be disclosed as never selectively disclosed, or vise versa
-     *
-     * @param containerDefinition the definition of the object where the attribute was found
-     * @param attributeName The name of the attribute
-     */
-    data class IncorrectlyDisclosedObjectAttribute(
-        val containerDefinition: DisclosableObject<String, AttributeMetadata>,
-        val attributeName: String,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an array element which according to the [containerDefinition] is not
-     * correctly disclosed.
-     *
-     * For instance, an array element is expected to be always selectively disclosable,
-     * yet it was found to be disclosed as never selectively disclosed, or vise versa
-     *
-     * @param containerDefinition the definition of the array where the element was found
-     * @param index the index of the element in the array that contained it
-     */
-    data class IncorrectlyDisclosedArrayElement(
-        val containerDefinition: DisclosableArray<String, AttributeMetadata>,
-        val index: Int,
-    ) : SdJwtDefinitionCredentialValidationError
-}
-
-sealed interface SdJwtDefinitionValidationResult {
-    data object Valid : SdJwtDefinitionValidationResult
-
-    @JvmInline
-    value class Invalid(val errors: List<SdJwtDefinitionCredentialValidationError>) : SdJwtDefinitionValidationResult {
-        constructor(
-            head: SdJwtDefinitionCredentialValidationError,
-            vararg tail: SdJwtDefinitionCredentialValidationError,
-        ) : this(listOf(head, *tail))
-
-        init {
-            require(errors.isNotEmpty()) { "errors must not be empty" }
-        }
-    }
-}
-
 /**
  * Validates a SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
  *
@@ -118,7 +36,7 @@ sealed interface SdJwtDefinitionValidationResult {
  * In addition, the validation can be performed by a verifier, right after receiving a presentation
  * of the SD-JWT-VC from the wallet. In this case, the list of [Disclosure] can be even empty
  */
-class SdJwtVcDefinitionValidator private constructor(
+class SdJwtVcDefinitionValidator2 private constructor(
     private val disclosuresPerClaimPath: DisclosuresPerClaimPath,
     private val definition: SdJwtDefinition,
 ) {
@@ -127,7 +45,12 @@ class SdJwtVcDefinitionValidator private constructor(
     private val validateObject: DeepRecursiveFunction<Triple<ClaimPath?, JsonObject, DisclosableObject<String, AttributeMetadata>>, Unit> =
         DeepRecursiveFunction { (parent, current, definition) ->
             val unknownAttributes = current.keys - definition.content.keys
-            allErrors.addAll(unknownAttributes.map { SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(definition, it) })
+            allErrors.addAll(
+                unknownAttributes.map {
+                    val unknownAttributeClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
+                    SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(unknownAttributeClaimPath)
+                },
+            )
 
             // iterate through the known attributes and validate them
             current.filterKeys { it !in unknownAttributes }.forEach { (attributeName, attributeValue) ->
@@ -150,7 +73,7 @@ class SdJwtVcDefinitionValidator private constructor(
                     (attributeDefinition is Disclosable.AlwaysSelectively<*> && !requiresDisclosures) ||
                     (attributeDefinition is Disclosable.NeverSelectively<*> && requiresDisclosures)
                 ) {
-                    allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedObjectAttribute(definition, attributeName))
+                    allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(attributeClaimPath))
                 }
 
                 // check type and recurse as needed
@@ -161,7 +84,7 @@ class SdJwtVcDefinitionValidator private constructor(
                             if (attributeValue is JsonObject) {
                                 callRecursive(Triple(attributeClaimPath, attributeValue, disclosableValue.value))
                             } else {
-                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongObjectAttributeType(definition, attributeName))
+                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
                             }
                         }
 
@@ -169,7 +92,7 @@ class SdJwtVcDefinitionValidator private constructor(
                             if (attributeValue is JsonArray) {
                                 validateArray.callRecursive(Triple(attributeClaimPath, attributeValue, disclosableValue.value))
                             } else {
-                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongObjectAttributeType(definition, attributeName))
+                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
                             }
                         }
 
@@ -206,7 +129,7 @@ class SdJwtVcDefinitionValidator private constructor(
                         (elementDefinition is Disclosable.AlwaysSelectively<*> && !requiresDisclosures) ||
                         (elementDefinition is Disclosable.NeverSelectively<*> && requiresDisclosures)
                     ) {
-                        allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedArrayElement(definition, elementIndex))
+                        allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(elementClaimPath))
                     }
 
                     // check type and recurse as needed
@@ -217,7 +140,7 @@ class SdJwtVcDefinitionValidator private constructor(
                                 if (elementValue is JsonObject) {
                                     validateObject.callRecursive(Triple(elementClaimPath, elementValue, disclosableValue.value))
                                 } else {
-                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongArrayElementType(definition, elementIndex))
+                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(elementClaimPath))
                                 }
                             }
 
@@ -225,7 +148,7 @@ class SdJwtVcDefinitionValidator private constructor(
                                 if (elementValue is JsonArray) {
                                     callRecursive(Triple(elementClaimPath, elementValue, disclosableValue.value))
                                 } else {
-                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongArrayElementType(definition, elementIndex))
+                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(elementClaimPath))
                                 }
                             }
 
@@ -299,7 +222,7 @@ class SdJwtVcDefinitionValidator private constructor(
                 return SdJwtDefinitionValidationResult.Invalid(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(it))
             }
 
-            val errors = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, definition).validate(processedPayload)
+            val errors = SdJwtVcDefinitionValidator2(disclosuresPerClaimPath, definition).validate(processedPayload)
             return if (errors.isEmpty()) {
                 SdJwtDefinitionValidationResult.Valid
             } else {
