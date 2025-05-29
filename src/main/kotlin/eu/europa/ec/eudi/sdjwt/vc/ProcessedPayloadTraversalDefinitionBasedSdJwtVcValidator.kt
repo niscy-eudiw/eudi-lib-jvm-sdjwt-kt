@@ -27,6 +27,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
+internal object ProcessedPayloadTraversalDefinitionBasedSdJwtVcValidator : DefinitionBasedSdJwtVcValidator {
+    override fun SdJwtDefinition.validate(
+        jwtPayload: JsonObject,
+        disclosures: List<Disclosure>,
+    ): DefinitionBasedValidationResult = SdJwtVcDefinitionValidator.validate(jwtPayload, disclosures, this)
+}
+
 /**
  * Validates a SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
  *
@@ -36,11 +43,11 @@ import kotlinx.serialization.json.JsonObject
  * In addition, the validation can be performed by a verifier, right after receiving a presentation
  * of the SD-JWT-VC from the wallet. In this case, the list of [Disclosure] can be even empty
  */
-class SdJwtVcDefinitionValidator2 private constructor(
+private class SdJwtVcDefinitionValidator private constructor(
     private val disclosuresPerClaimPath: DisclosuresPerClaimPath,
     private val definition: SdJwtDefinition,
 ) {
-    private val allErrors = mutableListOf<SdJwtDefinitionCredentialValidationError>()
+    private val allErrors = mutableListOf<DefinitionViolation>()
 
     private val validateObject: DeepRecursiveFunction<Triple<ClaimPath?, JsonObject, DisclosableObject<String, AttributeMetadata>>, Unit> =
         DeepRecursiveFunction { (parent, current, definition) ->
@@ -48,7 +55,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
             allErrors.addAll(
                 unknownAttributes.map {
                     val unknownAttributeClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
-                    SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(unknownAttributeClaimPath)
+                    DefinitionViolation.UnknownClaim(unknownAttributeClaimPath)
                 },
             )
 
@@ -73,7 +80,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                     (attributeDefinition is Disclosable.AlwaysSelectively<*> && !requiresDisclosures) ||
                     (attributeDefinition is Disclosable.NeverSelectively<*> && requiresDisclosures)
                 ) {
-                    allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(attributeClaimPath))
+                    allErrors.add(DefinitionViolation.IncorrectlyDisclosedClaim(attributeClaimPath))
                 }
 
                 // check type and recurse as needed
@@ -84,7 +91,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                             if (attributeValue is JsonObject) {
                                 callRecursive(Triple(attributeClaimPath, attributeValue, disclosableValue.value))
                             } else {
-                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
+                                allErrors.add(DefinitionViolation.WrongClaimType(attributeClaimPath))
                             }
                         }
 
@@ -92,7 +99,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                             if (attributeValue is JsonArray) {
                                 validateArray.callRecursive(Triple(attributeClaimPath, attributeValue, disclosableValue.value))
                             } else {
-                                allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
+                                allErrors.add(DefinitionViolation.WrongClaimType(attributeClaimPath))
                             }
                         }
 
@@ -129,7 +136,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                         (elementDefinition is Disclosable.AlwaysSelectively<*> && !requiresDisclosures) ||
                         (elementDefinition is Disclosable.NeverSelectively<*> && requiresDisclosures)
                     ) {
-                        allErrors.add(SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(elementClaimPath))
+                        allErrors.add(DefinitionViolation.IncorrectlyDisclosedClaim(elementClaimPath))
                     }
 
                     // check type and recurse as needed
@@ -140,7 +147,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                                 if (elementValue is JsonObject) {
                                     validateObject.callRecursive(Triple(elementClaimPath, elementValue, disclosableValue.value))
                                 } else {
-                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(elementClaimPath))
+                                    allErrors.add(DefinitionViolation.WrongClaimType(elementClaimPath))
                                 }
                             }
 
@@ -148,7 +155,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
                                 if (elementValue is JsonArray) {
                                     callRecursive(Triple(elementClaimPath, elementValue, disclosableValue.value))
                                 } else {
-                                    allErrors.add(SdJwtDefinitionCredentialValidationError.WrongAttributeType(elementClaimPath))
+                                    allErrors.add(DefinitionViolation.WrongClaimType(elementClaimPath))
                                 }
                             }
 
@@ -161,7 +168,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
             }
         }
 
-    private fun validate(processedPayload: JsonObject): List<SdJwtDefinitionCredentialValidationError> {
+    private fun validate(processedPayload: JsonObject): List<DefinitionViolation> {
         val processedPayloadWithoutWellKnown = JsonObject(processedPayload - wellKnownClaims)
         validateObject(Triple(null, processedPayloadWithoutWellKnown, definition))
         return allErrors
@@ -198,7 +205,7 @@ class SdJwtVcDefinitionValidator2 private constructor(
          * @param definition the definition of the SD-JWT-VC credential against which the given [jwtPayload] and [disclosures]
          * will be validated
          */
-        fun validate(jwtPayload: JsonObject, disclosures: List<Disclosure>, definition: SdJwtDefinition): SdJwtDefinitionValidationResult =
+        fun validate(jwtPayload: JsonObject, disclosures: List<Disclosure>, definition: SdJwtDefinition): DefinitionBasedValidationResult =
             validate(UnsignedSdJwt(jwtPayload, disclosures), definition)
 
         /**
@@ -213,20 +220,20 @@ class SdJwtVcDefinitionValidator2 private constructor(
          * @param sdJwt The JWT payload and the disclosures of a presented SD-JWT-VC
          * @param definition the definition of the SD-JWT-VC credential against which the given [sdJwt] will be validated
          */
-        fun validate(sdJwt: UnsignedSdJwt, definition: SdJwtDefinition): SdJwtDefinitionValidationResult {
+        fun validate(sdJwt: UnsignedSdJwt, definition: SdJwtDefinition): DefinitionBasedValidationResult {
             val (processedPayload, disclosuresPerClaimPath) = runCatching {
                 val disclosuresPerClaimPath = mutableMapOf<ClaimPath, List<Disclosure>>()
                 val visitor = disclosuresPerClaimVisitor(disclosuresPerClaimPath)
                 sdJwt.recreateClaims(visitor) to disclosuresPerClaimPath.toMap()
             }.getOrElse {
-                return SdJwtDefinitionValidationResult.Invalid(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(it))
+                return DefinitionBasedValidationResult.Invalid(DefinitionViolation.DisclosureInconsistencies(it))
             }
 
-            val errors = SdJwtVcDefinitionValidator2(disclosuresPerClaimPath, definition).validate(processedPayload)
+            val errors = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, definition).validate(processedPayload)
             return if (errors.isEmpty()) {
-                SdJwtDefinitionValidationResult.Valid
+                DefinitionBasedValidationResult.Valid
             } else {
-                SdJwtDefinitionValidationResult.Invalid(errors)
+                DefinitionBasedValidationResult.Invalid(errors)
             }
         }
     }
