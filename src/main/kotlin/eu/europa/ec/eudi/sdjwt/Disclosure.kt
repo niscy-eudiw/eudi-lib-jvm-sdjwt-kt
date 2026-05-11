@@ -69,7 +69,7 @@ sealed interface Disclosure {
             when (array.size) {
                 3 -> {
                     val salt = array[0].jsonPrimitive.content
-                    val claimName = array[1].jsonPrimitive.content
+                    val claimName = array[1].jsonPrimitive.content.also { it.ensureValidAttributeName() }
                     val claimValue = array[2]
                     Triple(salt, claimName, claimValue)
                 }
@@ -109,29 +109,27 @@ sealed interface Disclosure {
         internal fun objectProperty(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
-        ): Result<ObjectProperty> {
-            fun Claim.ensureValidAttributeName() {
-                val reserved = setOf(RFC9901.CLAIM_SD_ALG, RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
-                require(name() !in reserved) {
-                    "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or")}"
-                }
-            }
+        ): Result<ObjectProperty> = runCatchingCancellable {
+            // Make sure that the claim name is valid
+            claim.name().ensureValidAttributeName()
 
-            return runCatchingCancellable {
-                // Make sure that the claim name is valid
-                claim.ensureValidAttributeName()
-
-                // Create a Json Array [salt, claimName, claimValue]
-                val jsonArray = buildJsonArray {
-                    add(JsonPrimitive(saltProvider.salt())) // salt
-                    add(claim.name()) // claim name
-                    add(claim.value()) // claim value
-                }
-                val jsonArrayStr = jsonArray.toString()
-                // Base64-url-encoded
-                val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
-                ObjectProperty(encoded)
+            // Create a Json Array [salt, claimName, claimValue]
+            val jsonArray = buildJsonArray {
+                add(JsonPrimitive(saltProvider.salt())) // salt
+                add(claim.name()) // claim name
+                add(claim.value()) // claim value
             }
+            val jsonArrayStr = jsonArray.toString()
+            // Base64-url-encoded
+            val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
+            ObjectProperty(encoded)
         }
+    }
+}
+
+private fun String.ensureValidAttributeName() {
+    val reserved = setOf(RFC9901.CLAIM_SD_ALG, RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
+    require(this !in reserved) {
+        "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or ")}"
     }
 }
